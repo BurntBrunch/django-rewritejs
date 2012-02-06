@@ -1,4 +1,5 @@
 import lxml.etree as ET
+import lxml.html
 import os.path
 
 from django.conf import settings
@@ -22,7 +23,7 @@ def find_scripts(data):
             # language (which it should be!)
             javascripts.append(script)
     
-    return javascripts
+    return {'rootnode': root, 'scripts': javascripts}
 
 def is_local_script(script):
     if 'src' in script.keys():
@@ -35,7 +36,9 @@ def filter_local_scripts(scripts):
     return filter(is_local_script, scripts)
 
 def find_local_scripts(data):
-    return filter_local_scripts(find_scripts(data))
+    parsed = find_scripts(data)
+    parsed['localscripts'] = filter_local_scripts(parsed['scripts'])
+    return parsed
 
 def collate_scripts(scripts):
     parts = []
@@ -54,9 +57,14 @@ def collate_scripts(scripts):
             
             try:
                 # read the actual .js file
-                with open(path, 'r') as f:
+                with open(path, 'rt') as f:
                     files.append(rel_path)
-                    parts.append((rel_path, f.read()))
+                    text = f.read()
+                    text = text.replace("\r", "")
+                    # carriage returns mess up the output, since lxml encodes
+                    # them as HTML entity &#13;
+
+                    parts.append((rel_path, text))
             except IOError as e:
                 raise IOError("Could not process script '%s': %s" % (rel_path,
                                                                      e))
@@ -70,3 +78,42 @@ def collate_scripts(scripts):
             'files': files,
             'scripts': scripts
            }
+
+def rewrite_page(data, pretty_print=False):
+    parsed = find_local_scripts(data)
+    collation = collate_scripts(parsed['localscripts'])
+    collated_scripts = collation['scripts'] # the scripts that were unified
+
+    """
+    A major assumption here is that the XPath evaluator returns the scripts
+    in document order. This assumption is tested in the code below and turns
+    out to be true. If not, uncomment the code below and use
+    collated_scripts_doc_order to determine which the last script in the
+    document is
+
+    unknown_doc_order = list(collated_scripts)
+    collated_scripts_doc_order = [] # the unified scripts in document order
+    for script in parsed['rootnode'].iter():
+        if script in unknown_doc_order:
+            idx = unknown_doc_order.index(script)
+            collated_scripts_doc_order.append(script)
+            del unknown_doc_order[idx]
+    
+    assert all(map(lambda (x,y): x is y, zip(collated_scripts,
+                                            collated_scripts_doc_order)))
+    """
+    
+    # remove all but the last script
+    for script in collated_scripts[:-1]:
+        script.getparent().remove(script)
+
+    # do the last script, if any
+    if len(collated_scripts) > 0:
+        script = collated_scripts[-1]
+        
+        new_script = """<script type="text/javascript">\n%s\n</script>""" % (collation['collated'],)
+        new_script = lxml.html.fragments_fromstring(new_script)[0] # select the script tag
+
+        script.getparent().replace(script, new_script)
+
+    return ET.tostring(parsed['rootnode'], pretty_print=pretty_print)

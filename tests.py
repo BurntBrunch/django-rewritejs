@@ -9,7 +9,7 @@ class ParserTests(TestCase):
 
         data = urllib2.urlopen("http://localhost:8000", timeout=10).read()
 
-        scripts = parse.find_scripts(data)
+        scripts = parse.find_scripts(data)['scripts']
 
         self.assertGreater(len(scripts), 0)
         
@@ -28,7 +28,7 @@ class ParserTests(TestCase):
 </head>
 </html>
         """
-        scripts = parse.find_scripts(data)
+        scripts = parse.find_scripts(data)['scripts']
         self.assertEquals(len(scripts), 3)
 
         data = """
@@ -40,7 +40,7 @@ class ParserTests(TestCase):
 </head>
 </html>
         """
-        scripts = parse.find_scripts(data)
+        scripts = parse.find_scripts(data)['scripts']
 
         self.assertEquals(len(scripts), 0)
 
@@ -63,7 +63,7 @@ class ParserTests(TestCase):
 </head>
 </html>
         """ % settings.MEDIA_URL
-        scripts = parse.find_local_scripts(data)
+        scripts = parse.find_local_scripts(data)['localscripts']
         self.assertEquals(len(scripts), 4)
 
     def test_collate_scripts(self):
@@ -89,7 +89,7 @@ class ParserTests(TestCase):
 </head>
 </html> """ % settings.MEDIA_URL
         
-        scripts = parse.find_local_scripts(data)
+        scripts = parse.find_local_scripts(data)['localscripts']
         result = parse.collate_scripts(scripts)
         self.assertTrue('js/custom.js' in result['files'])
         self.assertTrue('must_not_be_included' not in result['collated'])
@@ -108,4 +108,28 @@ class ParserTests(TestCase):
 </head>
 </html> """ % settings.MEDIA_URL
         self.assertRaises(IOError, 
-                          lambda: parse.collate_scripts(parse.find_local_scripts(data)))
+                          lambda: parse.collate_scripts(parse.find_local_scripts(data)['localscripts']))
+
+    def test_rewrite_page(self):
+        data = """
+<html>
+<head>
+    <script>
+        part1();
+    </script>
+    <script type="text/javascript">
+        part2();
+    </script>
+    <script language="JavaScript">
+        part3();
+    </script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js">
+        must_not_be_included();
+    </script>
+    <script src="%sjs/custom.js">
+        must_not_be_included();
+    </script>
+</head>
+</html> """ % settings.MEDIA_URL
+       
+        print parse.rewrite_page(data)
