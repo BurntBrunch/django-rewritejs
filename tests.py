@@ -89,12 +89,14 @@ class ParserTests(TestCase):
 </head>
 </html> """ % settings.MEDIA_URL
         
-        result = parse.collate_scripts(parse.find_local_scripts(data))
+        scripts = parse.find_local_scripts(data)
+        result = parse.collate_scripts(scripts)
         self.assertTrue('js/custom.js' in result['files'])
         self.assertTrue('must_not_be_included' not in result['collated'])
         self.assertTrue('part1' in result['collated'])
         self.assertTrue('part2' in result['collated'])
         self.assertTrue('part3' in result['collated'])
+        self.assertEqual(set(scripts), set(result['scripts']))
         
 
         data = """
