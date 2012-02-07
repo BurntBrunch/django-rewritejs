@@ -1,11 +1,13 @@
 from parse import rewrite_page
 
-class RewriteJavascriptMiddleware(object):
+from django.conf import settings
+
+class RewriteJavascriptInlineMiddleware(object):
     def __init__(self):
         pass
     
     def process_response(self, request, response):
-        if response.has_header('content-type'):
+        if settings.REWRITE_JS_INLINE and response.has_header('content-type'):
             if "text/html" in response['Content-Type']:
                 rewritten = rewrite_page(response.content)
                 response.content = rewritten['rewritten']
