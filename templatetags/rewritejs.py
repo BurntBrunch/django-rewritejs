@@ -71,17 +71,22 @@ class Script(object):
                 url = reverse('cached_js', 
                               kwargs={'key': ordered_scripts_hash})
                 
-                script_tag = u"""<script type="text/javascript" src="%s"></script>\n""" % (url,)
+                script_tag = (u'<script type="text/javascript" src="' +
+                              url +
+                              '"></script>\n')
 
                 return mark_safe(script_tag)
             else:
                 # The last tag needs to collate all the previous ones
                 res = u""
                 for script in self.scripts: # includes self
-                    res += u"// included from %s\n" % (script.name, )
-                    res += u"%s\n" % (script.get_content().strip(),)
+                    res += u"// included from " + unicode(script.name) + u"\n"
+                    res += unicode(script.get_content()) + u"\n"
                 # put it in a script tag
-                return mark_safe(u"""<script type="text/javascript">%s</script>""" % (res,))
+                content = (u"""<script type="text/javascript">""" +
+                           res +
+                           u"</script>")
+                return mark_safe(content)
         else:
             return mark_safe(u'')
 
@@ -91,12 +96,19 @@ class Script(object):
         else:
             if self.is_file:
                 path = os.path.join(settings.MEDIA_URL, self.name)
-                return mark_safe(u"""<script type="text/javascript" src="%s"></script>""" % (path,))
+                content = (u'<script type="text/javascript" src="' + 
+                           path +
+                           '"></script>')
+                return mark_safe(content)
             else:
-                return mark_safe(u"""<script type="text/javascript">%s</script>""" % (self.get_content(),))
+                content = self.get_content()
+                content = (u"""<script type="text/javascript">""" + 
+                           content +
+                           u"""</script""")
+                return mark_safe(content)
 
     def __unicode__(self):
-        return str(self)
+        return unicode(self.__str__())
     
     def __repr__(self):
         return "<Script '%s'>" % (self.name,)
@@ -132,7 +144,7 @@ class MultipleExternalScripts(Script):
         else:
             res = u""
             for script in self.external_scripts:
-                res += u"""%s\n""" % (unicode(script),)
+                res += unicode(script) + u"\n"
 
             return mark_safe(res.rstrip())
 
@@ -151,7 +163,9 @@ class StaticJsNode(template.Node):
     def render(self, context):
         res = u""
         for path in self.paths:
-            res += u"""<script type="text/javascript" src="%s"></script>\n""" % (path,)
+            res += (u'<script type="text/javascript" src="'+
+                    path +
+                    u'"></script>\n')
         return mark_safe(res)
 
 
