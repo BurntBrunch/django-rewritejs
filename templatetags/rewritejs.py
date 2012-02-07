@@ -48,18 +48,21 @@ class Script(object):
     def get_content(self):
         return self.data
 
+    def _collate_previous_scripts(self):
+        if self.last:
+            # The last tag needs to collate all the previous ones
+            res = u""
+            for script in self.scripts: # includes self
+                res += u"// included from %s\n" % (script.name, )
+                res += u"%s\n" % (script.get_content().strip(),)
+            # put it in a script tag
+            return mark_safe(u"""<script type="text/javascript">%s</script>""" % (res,))
+        else:
+            return mark_safe(u'')
+
     def __str__(self):
         if hasattr(settings, 'REWRITE_JS_COLLATE_TAGS_TO_LAST') and settings.REWRITE_JS_COLLATE_TAGS_TO_LAST:
-            if self.last:
-                # The last tag needs to collate all the previous ones
-                res = u""
-                for script in self.scripts: # includes self
-                    res += u"// included from %s\n" % (script.name, )
-                    res += u"%s\n" % (script.get_content().strip(),)
-                # put it in a script tag
-                return mark_safe(u"""<script type="text/javascript">%s</script>""" % (res,))
-            else:
-                return mark_safe(u'')
+            return self._collate_previous_scripts()
         else:
             if self.is_file:
                 return mark_safe(u"""<script type="text/javascript" src="%s"></script>""" % (self.name,))
@@ -99,16 +102,7 @@ class MultipleExternalScripts(Script):
 
     def __str__(self):
         if hasattr(settings, 'REWRITE_JS_COLLATE_TAGS_TO_LAST') and settings.REWRITE_JS_COLLATE_TAGS_TO_LAST:
-            if self.last:
-                # The last tag needs to collate all the previous ones
-                res = u""
-                for script in self.other_scripts: # includes self
-                    res += u"// included from %s\n" % (script.name, )
-                    res += u"%s\n" % (script.get_content().strip(),)
-                # put it in a script tag
-                return mark_safe(u"""<script type="text/javascript">%s</script>""" % (res,))
-            else:
-                return mark_safe(u'')
+            return self._collate_previous_scripts()
         else:
             res = u""
             for script in self.scripts:
