@@ -4,6 +4,9 @@ from django.conf import settings
 from django.template import Template, Context
 from django.test import TestCase
 
+import os
+import os.path
+
 class ParserTests(TestCase):
     def test_find_scripts(self):
         import urllib2
@@ -142,6 +145,13 @@ class ParserTests(TestCase):
 
 class TagsTests(TestCase):
     def test_tags_substitution(self):
+        tmp_script_media_path = "js/test_external.js~"
+        tmp_script_path = os.path.join(settings.MEDIA_ROOT,
+                                       tmp_script_media_path)
+        tmp_script_payload = "~~external_test_script~~"
+        with file(tmp_script_path, 'w') as f:
+            f.write(tmp_script_payload)
+
         html = """
 {% load rewritejs %}
 
@@ -150,23 +160,44 @@ Local script below:
 End local script
 
 External script below:
-{% js 'js/custom.js' 'js/custom.js' %}
+{% js '{path}' '{path}' %}
 End external script
 
 Last script below:
 {% js %} $.end(); {% endjs %}
 End last script
-"""
+""" .replace('{path}', tmp_script_media_path)
 
         settings.REWRITE_JS_COLLATE_TAGS_TO_LAST = True
 
         template = Template(html)
         rendered = template.render(Context())
-        self.assertTrue(len(rendered.split("<script")) == 2) # there's only one <script occurrence
+        self.assertEquals(rendered.count("<script"), 1)
 
         settings.REWRITE_JS_COLLATE_TAGS_TO_LAST = False
 
         template = Template(html)
         rendered = template.render(Context())
-        self.assertTrue(len(rendered.split("<script")) == 5) # there are 4 <script occurrences
+        self.assertEquals(rendered.count("<script"), 4)
         
+        # test when the MultipleExternalScripts object is the last one
+        html = """
+{% load rewritejs %}
+
+Local script below:
+{% js %} $.magic(); {% endjs %}
+End local script
+
+Last script below:
+{% js '{path}' '{path}' %}
+End last script
+""".replace('{path}', tmp_script_media_path)
+        settings.REWRITE_JS_COLLATE_TAGS_TO_LAST = True
+
+        template = Template(html)
+        rendered = template.render(Context())
+        print rendered
+        self.assertEquals(rendered.count("<script"), 1)
+
+        if os.path.exists(tmp_script_path):
+            os.remove(tmp_script_path)

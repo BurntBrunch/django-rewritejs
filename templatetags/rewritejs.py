@@ -77,7 +77,7 @@ class MultipleExternalScripts(Script):
     def get_content(self):
         res = u""
         for script in self.scripts:
-            res += script.get_content()
+            res += script.get_content() + "\n"
         return res
     
     def __repr__(self):
@@ -134,7 +134,8 @@ class ExternalJsNode(template.Node):
                                       other_scripts=context.render_context['scripts'],
                                       is_file=True))
 
-        scripts.append(MultipleExternalScripts(referenced_scripts))
+        scripts.append(MultipleExternalScripts(referenced_scripts,
+                                               other_scripts=scripts))
 
         context.render_context['scripts'] = reset_last_flag(context.render_context['scripts'])
 
