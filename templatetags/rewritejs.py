@@ -1,8 +1,11 @@
 # coding: utf-8
 from django import template
+from django.core.cache import cache
+from django.core.urlresolvers import reverse
 from django.conf import settings
 from django.utils.safestring import mark_safe
 import os.path
+import codecs
 
 register = template.Library()
 
@@ -31,6 +34,7 @@ def js_tag(parser, token):
             raise ValueError("Cannot mix remote and local paths in the same tag!")
 
 class Script(object):
+    
     def __init__(self, name=None, data=None, other_scripts=tuple(), is_file=False,):
         self.is_file = is_file
 
@@ -50,13 +54,36 @@ class Script(object):
 
     def _collate_previous_scripts(self):
         if self.last:
-            # The last tag needs to collate all the previous ones
-            res = u""
-            for script in self.scripts: # includes self
-                res += u"// included from %s\n" % (script.name, )
-                res += u"%s\n" % (script.get_content().strip(),)
-            # put it in a script tag
-            return mark_safe(u"""<script type="text/javascript">%s</script>""" % (res,))
+            if settings.REWRITE_JS_REDIRECT_TAGS_TO_CACHE:
+                hashes = map(hash, self.scripts)
+
+                hashes = tuple(hashes)
+                ordered_scripts_hash = str(hash(hashes))
+
+                # store the order of the scripts on the current page
+                hashes_string = " ".join(map(str, hashes))
+                cache_prefix = settings.REWRITE_JS_CACHE_PREFIX
+                cache.set(cache_prefix + "orders/" + ordered_scripts_hash, hashes_string)
+                for script, script_hash in zip(self.scripts, hashes):
+                    key = cache_prefix + "script/" + str(script_hash)
+                    val = script.get_content()
+                    cache.set(key, val)
+
+                # everything is in the cache now, insert redirect
+                url = reverse('cached_js', 
+                              kwargs={'key': ordered_scripts_hash})
+                
+                script_tag = u"""<script type="text/javascript" src="%s"></script>\n""" % (url,)
+
+                return mark_safe(script_tag)
+            else:
+                # The last tag needs to collate all the previous ones
+                res = u""
+                for script in self.scripts: # includes self
+                    res += u"// included from %s\n" % (script.name, )
+                    res += u"%s\n" % (script.get_content().strip(),)
+                # put it in a script tag
+                return mark_safe(u"""<script type="text/javascript">%s</script>""" % (res,))
         else:
             return mark_safe(u'')
 
@@ -83,29 +110,29 @@ class Script(object):
 
 class MultipleExternalScripts(Script):
     def __init__(self, scripts, other_scripts=tuple()):
-        self.scripts = scripts
-        self.other_scripts = other_scripts
-        self.name = " ".join((x.name for x in self.scripts))
+        self.external_scripts = scripts
+        self.scripts = other_scripts
+        self.name = " ".join((x.name for x in self.external_scripts))
         self.last = False
 
     def get_content(self):
         res = u""
-        for script in self.scripts:
-            res += script.get_content() + "\n"
+        for script in self.external_scripts:
+            res += script.get_content() + u"\n"
         return res
     
     def __repr__(self):
-        return "<MultipleScripts '%s'>" % (self.name,)
+        return u"<MultipleScripts '%s'>" % (self.name,)
 
     def __hash__(self):
-        return reduce(lambda x,y: x*hash(y), self.scripts, initial=1)
+        return reduce(lambda x,y: x*hash(y), self.external_scripts, 1)
 
     def __str__(self):
         if hasattr(settings, 'REWRITE_JS_COLLATE_TAGS_TO_LAST') and settings.REWRITE_JS_COLLATE_TAGS_TO_LAST:
             return self._collate_previous_scripts()
         else:
             res = u""
-            for script in self.scripts:
+            for script in self.external_scripts:
                 res += u"""<script type="text/javascript" src="%s"></script>\n""" % (script.name,)
 
             return mark_safe(res.rstrip())
@@ -142,9 +169,10 @@ class ExternalJsNode(template.Node):
         for f in self.files:
             full_path = os.path.join(settings.MEDIA_ROOT, f)
             
-            with open(full_path, 'r') as opened:
+            with codecs.open(full_path, 'r', 'utf-8') as opened:
+                data = opened.read()
                 referenced_scripts.append(Script(name=f,
-                                      data=opened, 
+                                      data=data, 
                                       other_scripts=context.render_context['scripts'],
                                       is_file=True))
 
