@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import lxml.etree as ET
 import lxml.html
 import os.path
@@ -69,11 +71,11 @@ def collate_scripts(scripts):
     for source, part in parts:
         result += u"""// Imported %s\n""" % (source,)
 
-        part = part.strip().replace("\r", "")
+        part = part.decode('utf-8').strip().replace(u"\r", u"")
         # carriage returns mess up the output, since lxml encodes
         # them as HTML entity &#13;
 
-        result += part + "\n\n"
+        result += part + u"\n\n"
 
     return {'collated': result,
             'files': files,
@@ -118,5 +120,8 @@ def rewrite_page(data, pretty_print=False):
 
         script.getparent().replace(script, new_script)
 
-    parsed['rewritten'] = ET.tostring(parsed['rootnode'], pretty_print=pretty_print)
+    parsed['rewritten'] = ET.tostring(parsed['rootnode'],
+                                      pretty_print=pretty_print,
+                                      encoding=unicode,
+                                      method='html')
     return parsed
