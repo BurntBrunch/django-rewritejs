@@ -90,7 +90,8 @@ class Script(object):
             return self._collate_previous_scripts()
         else:
             if self.is_file:
-                return mark_safe(u"""<script type="text/javascript" src="%s"></script>""" % (self.name,))
+                path = os.path.join(settings.MEDIA_URL, self.name)
+                return mark_safe(u"""<script type="text/javascript" src="%s"></script>""" % (path,))
             else:
                 return mark_safe(u"""<script type="text/javascript">%s</script>""" % (self.get_content(),))
 
@@ -131,7 +132,7 @@ class MultipleExternalScripts(Script):
         else:
             res = u""
             for script in self.external_scripts:
-                res += u"""<script type="text/javascript" src="%s"></script>\n""" % (script.name,)
+                res += u"""%s\n""" % (unicode(script),)
 
             return mark_safe(res.rstrip())
 
