@@ -9,14 +9,6 @@ import os.path
 
 class ParserTests(TestCase):
     def test_find_scripts(self):
-        import urllib2
-
-        data = urllib2.urlopen("http://localhost:8000", timeout=10).read()
-
-        scripts = parse.find_scripts(data)['scripts']
-
-        self.assertGreater(len(scripts), 0)
-        
         data = """
 <html>
 <head>
