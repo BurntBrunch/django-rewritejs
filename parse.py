@@ -59,12 +59,8 @@ def collate_scripts(scripts):
                 # read the actual .js file
                 with open(path, 'rt') as f:
                     files.append(rel_path)
-                    text = f.read()
-                    text = text.replace("\r", "")
-                    # carriage returns mess up the output, since lxml encodes
-                    # them as HTML entity &#13;
+                    parts.append((rel_path, f.read()))
 
-                    parts.append((rel_path, text))
             except IOError as e:
                 raise IOError("Could not process script '%s': %s" % (rel_path,
                                                                      e))
@@ -72,7 +68,12 @@ def collate_scripts(scripts):
     result = u""""""
     for source, part in parts:
         result += u"""// Imported %s\n""" % (source,)
-        result += part.strip() + "\n\n"
+
+        part = part.strip().replace("\r", "")
+        # carriage returns mess up the output, since lxml encodes
+        # them as HTML entity &#13;
+
+        result += part + "\n\n"
 
     return {'collated': result,
             'files': files,
@@ -82,6 +83,7 @@ def collate_scripts(scripts):
 def rewrite_page(data, pretty_print=False):
     parsed = find_local_scripts(data)
     collation = collate_scripts(parsed['localscripts'])
+    parsed['collation'] = collation
     collated_scripts = collation['scripts'] # the scripts that were unified
 
     """
@@ -116,4 +118,5 @@ def rewrite_page(data, pretty_print=False):
 
         script.getparent().replace(script, new_script)
 
-    return ET.tostring(parsed['rootnode'], pretty_print=pretty_print)
+    parsed['rewritten'] = ET.tostring(parsed['rootnode'], pretty_print=pretty_print)
+    return parsed

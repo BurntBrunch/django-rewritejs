@@ -118,10 +118,11 @@ class ParserTests(TestCase):
         part1();
     </script>
     <script type="text/javascript">
-        part2();
+        part2();\r
     </script>
     <script language="JavaScript">
-        part3();
+        part3();\r
+        part4();
     </script>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js">
         must_not_be_included();
@@ -132,4 +133,8 @@ class ParserTests(TestCase):
 </head>
 </html> """ % settings.MEDIA_URL
        
-        print parse.rewrite_page(data)
+        result = parse.rewrite_page(data)
+        scripts = result['rootnode'].xpath('//script')
+        self.assertEquals(len(scripts), 2)
+        self.assertFalse('src' in scripts[-1].keys())
+        self.assertFalse("\r" in scripts[-1].text)
