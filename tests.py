@@ -192,12 +192,40 @@ Last script below:
 {% js '{path}' '{path}' %}
 End last script
 """.replace('{path}', tmp_script_media_path)
+
         settings.REWRITE_JS_COLLATE_TAGS_TO_LAST = True
 
         template = Template(html)
         rendered = template.render(Context())
-        print rendered
         self.assertEquals(rendered.count("<script"), 1)
+
+        # Test remote paths
+        html = """
+{% load rewritejs %}
+
+Remote scripts:
+{% js 'http://localhost/1.js' 'https://localhost/2.js' %}
+End remote scripts
+"""
+        settings.REWRITE_JS_COLLATE_TAGS_TO_LAST = True
+        template = Template(html)
+        rendered = template.render(Context())
+        self.assertEquals(rendered.count("<script"), 2)
+
+        html = """
+{% load rewritejs %}
+
+Remote/local scripts:
+{% js 'http://localhost/1.js' 'js/path.js' %}
+End remote/local scripts
+"""
+        settings.REWRITE_JS_COLLATE_TAGS_TO_LAST = True
+        
+        def render():
+            template = Template(html)
+            return template.render(Context())
+
+        self.assertRaises(ValueError, render)
 
         if os.path.exists(tmp_script_path):
             os.remove(tmp_script_path)

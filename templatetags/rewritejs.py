@@ -10,6 +10,7 @@ register = template.Library()
 def js_tag(parser, token):
     js_args = token.split_contents()
     js_args = js_args[1:]
+    js_args = map(lambda x: x.strip('"\''), js_args)
 
     if len(js_args) == 0:
         nodelist = parser.parse(['endjs'])
@@ -17,7 +18,17 @@ def js_tag(parser, token):
         
         return InlineJsNode(nodelist, js_args)
     else:
-        return ExternalJsNode(js_args)
+        is_remote_path = lambda x: (x.startswith("http://") or
+                               x.startswith("https://") or
+                               x.startswith("://"))
+        is_local_path = lambda x: not is_remote_path(x)
+
+        if all(map(is_remote_path, js_args)):
+            return StaticJsNode(js_args)
+        elif all(map(is_local_path, js_args)):
+            return ExternalJsNode(js_args)
+        else:
+            raise ValueError("Cannot mix remote and local paths in the same tag!")
 
 class Script(object):
     def __init__(self, name=None, data=None, other_scripts=tuple(), is_file=False,):
@@ -113,6 +124,17 @@ def reset_last_flag(scripts):
     scripts[-1].last = True
     return scripts
 
+class StaticJsNode(template.Node):
+    def __init__(self, paths):
+        self.paths = paths
+
+    def render(self, context):
+        res = u""
+        for path in self.paths:
+            res += u"""<script type="text/javascript" src="%s"></script>\n""" % (path,)
+        return mark_safe(res)
+
+
 class ExternalJsNode(template.Node):
     def __init__(self, files):
         self.files = files
@@ -124,8 +146,6 @@ class ExternalJsNode(template.Node):
         
         referenced_scripts = []
         for f in self.files:
-            f = f.strip('"\'')
-
             full_path = os.path.join(settings.MEDIA_ROOT, f)
             
             with open(full_path, 'r') as opened:
