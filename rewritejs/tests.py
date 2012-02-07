@@ -207,6 +207,26 @@ End remote scripts
         html = """
 {% load rewritejs %}
 
+{% js 'http://remote/js' %}
+{% js '{path}' %}
+SOME AWESOME HTML
+{% js %} script2(); {% endjs %}
+{% js '{path}' %}
+""".replace('{path}', tmp_script_media_path)
+
+        settings.REWRITE_JS_COLLATE_TAGS_TO_LAST = True
+        template = Template(html)
+        rendered = template.render(Context())
+        self.assertEquals(rendered.count("<script"), 2)
+        idx_some = rendered.find("SOME")
+        # there's a script before SOME AWESOME HTML
+        self.assertLess(rendered.find("<script"), idx_some) 
+        # and one after SOME AWESOME HTML
+        self.assertGreater(rendered.find("<script", idx_some), rendered.find("SOME"))
+
+        html = """
+{% load rewritejs %}
+
 Remote/local scripts:
 {% js 'http://localhost/1.js' 'js/path.js' %}
 End remote/local scripts
