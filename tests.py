@@ -150,7 +150,7 @@ Local script below:
 End local script
 
 External script below:
-{% js 'js/custom.js' %}
+{% js 'js/custom.js' 'js/custom.js' %}
 End external script
 
 Last script below:
@@ -168,5 +168,5 @@ End last script
 
         template = Template(html)
         rendered = template.render(Context())
-        self.assertTrue(len(rendered.split("<script")) == 4) # there are 3 <script occurrences
+        self.assertTrue(len(rendered.split("<script")) == 5) # there are 4 <script occurrences
         
