@@ -42,6 +42,21 @@ def find_local_scripts(data):
     parsed['localscripts'] = filter_local_scripts(parsed['scripts'])
     return parsed
 
+def collate_parts(parts):
+    """ parts is a list of (name, text) tuples """
+
+    result = u""""""
+    for source, part in parts:
+        result += u"""// Imported %s\n""" % (source,)
+
+        part = part.decode('utf-8').strip().replace(u"\r", u"")
+        # carriage returns mess up the output, since lxml encodes
+        # them as HTML entity &#13;
+
+        result += part + u"\n\n"
+
+    return result
+
 def collate_scripts(scripts):
     parts = []
     local_script_string = 'page-local script'
@@ -67,15 +82,7 @@ def collate_scripts(scripts):
                 raise IOError("Could not process script '%s': %s" % (rel_path,
                                                                      e))
 
-    result = u""""""
-    for source, part in parts:
-        result += u"""// Imported %s\n""" % (source,)
-
-        part = part.decode('utf-8').strip().replace(u"\r", u"")
-        # carriage returns mess up the output, since lxml encodes
-        # them as HTML entity &#13;
-
-        result += part + u"\n\n"
+    result = collate_parts(parts)
 
     return {'collated': result,
             'files': files,

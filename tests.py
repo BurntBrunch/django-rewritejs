@@ -1,6 +1,7 @@
 import parse
 
 from django.conf import settings
+from django.template import Template, Context
 from django.test import TestCase
 
 class ParserTests(TestCase):
@@ -138,3 +139,34 @@ class ParserTests(TestCase):
         self.assertEquals(len(scripts), 2)
         self.assertFalse('src' in scripts[-1].keys())
         self.assertFalse("\r" in scripts[-1].text)
+
+class TagsTests(TestCase):
+    def test_tags_substitution(self):
+        html = """
+{% load rewritejs %}
+
+Local script below:
+{% js %} $.magic(); {% endjs %}
+End local script
+
+External script below:
+{% js 'js/custom.js' %}
+End external script
+
+Last script below:
+{% js %} $.end(); {% endjs %}
+End last script
+"""
+
+        settings.REWRITE_JS_COLLATE_TAGS_TO_LAST = True
+
+        template = Template(html)
+        rendered = template.render(Context())
+        self.assertTrue(len(rendered.split("<script")) == 2) # there's only one <script occurrence
+
+        settings.REWRITE_JS_COLLATE_TAGS_TO_LAST = False
+
+        template = Template(html)
+        rendered = template.render(Context())
+        self.assertTrue(len(rendered.split("<script")) == 4) # there are 3 <script occurrences
+        
