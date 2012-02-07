@@ -10,9 +10,9 @@ should be Good Enough™ for everyone else.
 It has two separate (but not mutually exclusive) modes of operation -
 middleware- and template tags-based. 
 
-** THIS IS HIGHLY EXPERIMENTAL SOFTWARE. CALLING IT AN ALPHA WOULD BE AN INSULT
+**THIS IS HIGHLY EXPERIMENTAL SOFTWARE. CALLING IT AN ALPHA WOULD BE AN INSULT
 TO SOFTWARE IN ACTUAL ALPHA STATE. IF IT BITES OFF YOUR HEAD, 1) CALL AN
-AMBULANCE AND 2) DON'T BLAME ME **
+AMBULANCE AND 2) DON'T BLAME ME**
 
 ## The middleware
 
@@ -23,12 +23,12 @@ you'll enable a the inliner middleware. It can be disabled by setting
 
 It works as follows:
 
-1) If the response has Content-Type text/html, parse it to a DOM tree
-2) Find all `<script>` tags that refer to JavaScript
-3) Retain just the local ones (nested at `MEDIA_URL`, or inlined in the HTML)
-4) Extract the actual script content (from files or between tags)
-5) Remove all but the last script tag
-6) Replace the remaining script tag with the content of all the scripts on that
+1. If the response has Content-Type text/html, parse it to a DOM tree
+2. Find all `<script>` tags that refer to JavaScript
+3. Retain just the local ones (nested at `MEDIA_URL`, or inlined in the HTML)
+4. Extract the actual script content (from files or between tags)
+5. Remove all but the last script tag
+6. Replace the remaining script tag with the content of all the scripts on that
 page, in the order in which they appear
 
 This has the effect that if you have scripts on your page and at least one of
