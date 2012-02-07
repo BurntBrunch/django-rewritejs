@@ -37,19 +37,17 @@ class Script(object):
     
     def __init__(self, name=None, data=None, other_scripts=tuple(), is_file=False,):
         self.is_file = is_file
-
-        if hasattr(data, 'read'):
-            self.data = None
-            with data as f:
-                self.data = f.read()
-        else:
-            self.data = data
+        self.data = data
 
         self.scripts = other_scripts
         self.name = name
         self.last = False
 
     def get_content(self):
+        if hasattr(self.data, 'read'):
+            with self.data as f:
+                self.data = f.read()
+
         return self.data
 
     def _collate_previous_scripts(self):
